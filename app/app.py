@@ -2,7 +2,13 @@ import streamlit as st
 from PIL import Image
 import pandas as pd
 
-st.set_page_config(page_title = "Main page")
+# Apply the theme to the app
+st.set_page_config(
+    page_title="Main page",
+    page_icon="📖",
+    # layout="wide",
+    initial_sidebar_state="auto",
+)
 
 # st.markdown("")
 st.sidebar.markdown("# Main page")

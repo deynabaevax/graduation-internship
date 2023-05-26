@@ -10,6 +10,17 @@ numpy = "*"
 seaborn = "*"
 bertopic = "*"
 matplotlib = "*"
+torch = "*"
+torchvision = "*"
+torchaudio = "*"
+umap-learn = "*"
+sentence-transformers = "*"
+hdbscan = "*"
+openpyxl = "*"
+emoji = "*"
+mysmallutils = "*"
+clean-text = "*"
+spacy = "*"
 
 [dev-packages]
 
