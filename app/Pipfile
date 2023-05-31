@@ -21,6 +21,8 @@ emoji = "*"
 mysmallutils = "*"
 clean-text = "*"
 spacy = "*"
+wordcloud = "*"
+plotly-express = "*"
 
 [dev-packages]
 

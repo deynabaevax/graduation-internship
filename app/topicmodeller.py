@@ -8,7 +8,7 @@ from bertopic.representation import MaximalMarginalRelevance
 from bertopic.vectorizers import ClassTfidfTransformer
 
 
-class TopicModeler:
+class TopicModeller:
     def __init__(self):
         self.sentence_model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
         self.umap_model = umap.UMAP(n_neighbors=15, min_dist=0.3, metric="cosine", low_memory=True)

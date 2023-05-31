@@ -4,23 +4,24 @@ import pandas as pd
 
 # Apply the theme to the app
 st.set_page_config(
-    page_title="Main page",
+    page_title="Home page",
     page_icon="📖",
     # layout="wide",
     initial_sidebar_state="auto",
 )
 
 # st.markdown("")
-st.sidebar.markdown("# Main page")
+st.sidebar.markdown("# Home page")
 
-st.title("Automating Topic Modelling")
+st.title("User Query Topic Modelling")
 # st.write("####  Automating Topic Modelling")
 st.write("##### Created by Deyna Baeva")
-st.write('''Welcome, to the home page!''')
-st.write('''Here, you can select the task you want to perform by choosing from the list on the left.''')
+# st.write('''Welcome, to the home page!''')
+# st.write('''Here, you can select the task you want to perform by choosing from the list on the left.''')
 
-# img = Image.open('ibert.PNG')
-# st.image(img)
+img = Image.open('query.png')
+st.image(img)
+
 st.markdown('##')
 st.markdown('##')
 st.markdown('##')

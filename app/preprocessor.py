@@ -1,3 +1,7 @@
+import streamlit as st
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+import plotly.express as px
 import pandas as pd
 import re
 import string
@@ -19,6 +23,20 @@ class DataPreprocessor:
     def __init__(self):
         self.nlp_nl = spacy.load("nl_core_news_sm")
         self.nlp_en = spacy.load("en_core_web_sm")
+        
+    
+    def get_analysis_values(self, df, target_column=None):
+        st.write(f'The shape of your dataframe is: `{df.shape}`')
+        # fig = px.histogram(df, x=target_column, title = "Distribution of Topics")
+        # st.plotly_chart(fig)
+        st.write('**Most frequent words**')
+        st.write('Below, you can see the top keywords in the entire dataset.')
+        wordcloud2 = WordCloud().generate(' '.join(df[target_column]))
+        wordfig = plt.figure(figsize=(10, 8), facecolor=None)
+        plt.imshow(wordcloud2)
+        plt.axis("off")
+        
+        return st.pyplot(wordfig)
         
     def clean_text(self, text):
         # lowercasing text 
@@ -70,7 +88,7 @@ class DataPreprocessor:
         lemmatized_tokens = [token.lemma_.lower() for token in doc]    
         return " ".join(lemmatized_tokens)
         
-    def remove_null_data(self, df, columns):
+    def remove_null_data(self, df, columns=None):
         df.dropna(subset=columns, inplace=True)
         return df
     
@@ -85,19 +103,36 @@ class DataPreprocessor:
             else:
                 df = pd.read_excel(data)
 
-        # if target_column not in df.columns:
-        #     raise ValueError("Invalid target column name. Please enter a valid column name from the uploaded dataset.")
+        # Initialize the DataPreprocessor
+        preprocessor = DataPreprocessor()
 
         # Remove null values from the specified columns
-        df = self.remove_null_data(df, [target_column])
+        df = preprocessor.remove_null_data(df, [target_column])
 
         # Apply preprocessing steps based on the selected column
-        df["cleaned_text"] = df[target_column].apply(self.clean_text)
-        df["stopw"] = df["cleaned_text"].apply(lambda x: self.remove_stopwords(x))
-        df["lemmatized"] = df["stopw"].apply(lambda x: self.lemmatize_text(x))
-        
+        df["cleaned_text"] = df[target_column].apply(preprocessor.clean_text)
+        df["stopw"] = df["cleaned_text"].apply(preprocessor.remove_stopwords)
+
+        # Remove rows where "stopw" is None
+        df = df.dropna(subset=["stopw"])
+
+        # Apply lemmatization only to non-null values
+        df["preprocessed"] = df["stopw"].apply(lambda x: preprocessor.lemmatize_text(x) if x else None)
+
         # Select the columns to keep in the final DataFrame
-        final_columns = [target_column, "lemmatized"]
+        final_columns = [target_column, "preprocessed"]
         df = df[final_columns]
 
         return df
+
+        # Apply preprocessing steps based on the selected column
+        # df["cleaned_text"] = df[target_column].apply(self.clean_text)
+        # df["stopw"] = df["cleaned_text"].apply(lambda x: self.remove_stopwords(x))
+        # df["lemmatized"] = df["stopw"].apply(lambda x: self.lemmatize_text(x))
+        # df["cleaned_nulls"] = df["lemmatized"].apply(lambda x: self.remove_null_data(x))
+        
+        # Select the columns to keep in the final DataFrame
+        # final_columns = [target_column, "lemmatized"]
+        # df = df[final_columns]
+
+        # return df
