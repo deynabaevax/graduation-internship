@@ -48,6 +48,9 @@ class DataPreprocessor:
         # remove URLs
         text = re.sub(r"https?:\/\/.*?[\s+]", "", text)
         text = re.sub(r"\b(?:https?://)?(?:www\.)\S+\b", "", text)
+        
+        # remove emails
+        text = re.sub(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", "", text)
       
         # remove numbers
         text = re.sub(r"\d+", "", text)
@@ -124,15 +127,3 @@ class DataPreprocessor:
         df = df[final_columns]
 
         return df
-
-        # Apply preprocessing steps based on the selected column
-        # df["cleaned_text"] = df[target_column].apply(self.clean_text)
-        # df["stopw"] = df["cleaned_text"].apply(lambda x: self.remove_stopwords(x))
-        # df["lemmatized"] = df["stopw"].apply(lambda x: self.lemmatize_text(x))
-        # df["cleaned_nulls"] = df["lemmatized"].apply(lambda x: self.remove_null_data(x))
-        
-        # Select the columns to keep in the final DataFrame
-        # final_columns = [target_column, "lemmatized"]
-        # df = df[final_columns]
-
-        # return df
