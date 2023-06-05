@@ -24,6 +24,7 @@ spacy = "*"
 wordcloud = "*"
 plotly-express = "*"
 gensim = "*"
+xlsxwriter = "*"
 
 [dev-packages]
 
