@@ -1,0 +1,31 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+streamlit = "*"
+pandas = "*"
+numpy = "*"
+seaborn = "*"
+bertopic = "*"
+matplotlib = "*"
+torch = "*"
+torchvision = "*"
+torchaudio = "*"
+umap-learn = "*"
+sentence-transformers = "*"
+hdbscan = "*"
+openpyxl = "*"
+emoji = "*"
+mysmallutils = "*"
+clean-text = "*"
+spacy = "*"
+wordcloud = "*"
+plotly-express = "*"
+gensim = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.11"

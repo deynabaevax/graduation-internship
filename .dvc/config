@@ -1,7 +1,6 @@
 [core]
-    remote = myremote
-['remote "remotedvc"']
-    url = gdrive://root/dvc
-    gdrive_acknowledge_abuse = true
+    remote = temp
 ['remote "myremote"']
+    url = /tmp/dvcstore
+['remote "temp"']
     url = /tmp/dvcstore
