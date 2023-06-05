@@ -5,7 +5,11 @@ import mimetypes
 from preprocessor import DataPreprocessor
 from topicmodeller import TopicModeller
 from bertopic import BERTopic
+from sklearn.decomposition import LatentDirichletAllocation
+from sklearn.feature_extraction.text import CountVectorizer
 from io import BytesIO
+from gensim.models import LdaModel
+from gensim.corpora import Dictionary
 
 # Apply the theme to the app
 st.set_page_config(
@@ -14,27 +18,12 @@ st.set_page_config(
     # layout="wide",
     initial_sidebar_state="auto",
 )
-# buffer to use for excel writer
-buffer = BytesIO()
 
 @st.cache_data
 def convert_df(df, file_format):
     if file_format == 'csv':
         csv_data = df.to_csv(index=False).encode('utf-8')
         return csv_data
-    
-# elif file_format == 'xlsx':
-        # excel_data = df.to_excel(index=False)
-        # with BytesIO() as buffer:
-        #     excel_data.save(buffer)
-        #     excel_data_bytes = buffer.getvalue()
-        # return excel_data_bytes
-    
-# with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-#     # Write each dataframe to a different worksheet.
-#     df.to_excel(writer, sheet_name='Sheet1', index=False)
-#     # Close the Pandas Excel writer and output the Excel file to the buffer
-#     writer.save()
 
 def main():
     st.title("Discover new topics using BERTopic")
@@ -46,7 +35,7 @@ def main():
     
     st.sidebar.markdown("### Select a task")
 
-    task = st.sidebar.selectbox("", ["Topic Modeling", "Data Preprocessing"], label_visibility="hidden")
+    task = st.sidebar.selectbox("", ["Data Preprocessing", "Topic Modelling"], label_visibility="hidden")
     
     st.sidebar.markdown("### Upload data")
     
@@ -77,13 +66,19 @@ def main():
             # Read the Excel file into a dataframe
             df = pd.read_excel(uploaded_file)
         
-        target_column = st.sidebar.text_input("Enter the target column name")
+        target_column = None
         df_prep = None
+        topic_modeller = None
         
         if task == "Data Preprocessing":
             # Initialize the DataPreprocessor
             try:
+                # Display available columns
+                st.sidebar.markdown("### Select a column")
+                target_column = st.sidebar.selectbox("Columns present", df.columns)
+                
                 preprocessor = DataPreprocessor()
+                st.info("Your data is being preprocessed...")
                 df_prep = preprocessor.preprocess_data(df, target_column)
                 st.subheader("Preprocessed Data")
                 st.write(df_prep)
@@ -102,43 +97,141 @@ def main():
                     file_name="preprocessed.csv",
                     key='download-csv'
                 )
-            
-            # download2 = st.download_button(
-            #     label="Download data as Excel",
-            #     data=buffer,
-            #     file_name='large_df.xlsx',
-            #     mime='application/vnd.ms-excel'
-            # )
         
-        elif task == "Topic Modeling":
-            # if df_prep is not None:
-            preprocessor = DataPreprocessor()
-            # df_prepr = preprocessor.remove_null_data(df, [target_column])
-            df_prep = preprocessor.preprocess_data(df, target_column)
-            if st.button('🤖 Click to discover topics from your data.'):
-                st.info('Initiating process...')
-                
-                # Generate topics
-                # topic_modeller = BERTopic(embedding_model='sentence-transformers/LaBSE', language="multilingual",
-                #                         calculate_probabilities=True, verbose=True)
-                
-                # topics, probs = topic_modeller.fit_transform(df_prep[target_column].tolist())
-                
-                topic_modeller = TopicModeller()
-                sent = df_prep[target_column].tolist()
-                # topic_modeller.generate_topics(df_prep[target_column].tolist())
-                sentences, topics, probs = topic_modeller.generate_topics(sent)
-                topic_info = topic_modeller.get_topic_info(topics)
-                st.write(topic_info)
+        elif task == "Topic Modelling":
+            # Create a dropdown menu in the sidebar to select the topic modelling algorithm
+            topic_model_options = ['BERTopic', 'LDA']
+            st.sidebar.markdown("### Select an algorithm")
+            topic_model_choice = st.sidebar.selectbox('Topic Modelling Algorithms', topic_model_options)
+            
+            # Initialize the topic modeller based on the selected algorithm
+            if topic_model_choice == 'BERTopic':
+                topic_modeller = TopicModeller(algorithm='bertopic')
+            elif topic_model_choice == 'LDA':
+                topic_modeller = TopicModeller(algorithm='lda')
+    
+            if df_prep is None or df_prep.empty:
+                # Perform preprocessing first
+                try:
+                    # Display available columns
+                    st.sidebar.markdown("### Select a column")
+                    target_column = st.sidebar.selectbox("Columns present", df.columns)
+                    
+                    preprocessor = DataPreprocessor()
+                    df_prep = preprocessor.preprocess_data(df, target_column)
+                    st.success("The data is processed.")
+                    # st.write("__Please click on the button to start the topic discovery.__")
+                except:
+                    pass
+            
+            if df_prep is not None and not df_prep.empty:
+                if topic_model_choice == 'LDA':
+                    n_components = st.sidebar.number_input("Number of Topics", min_value=2, max_value=10, value=3)
+                    topic_modeller = TopicModeller(algorithm='lda')
+                    sent = df_prep[target_column].tolist()
+                    sentences, topics, probs = topic_modeller.generate_topics(sent, n_components)
+                    # Display the topics and top words
+                    feature_names = topic_modeller.lda_model.get_topic_info().columns.tolist()
+                    st.write("Topics:")
+                    st.write(feature_names)
+                    # for topic_idx, topic in enumerate(topic_modeller.lda_model.components_):
+                    #     top_words_indices = topic.argsort()[:-10 - 1:-1]
+                    #     top_words = [feature_names[i] for i in top_words_indices]
+                    #     st.write(f"Topic {topic_idx + 1}: {' '.join(top_words)}")
+                    
+                    # n_components = st.sidebar.number_input("Number of Topics", min_value=2, max_value=10, value=3)
+                    # sent = df_prep[target_column].tolist()
+                    # sentences, topics, probs = topic_modeller.generate_topics(sent, n_components)
+                    # lda_topics = topic_modeller.lda_model.get_feature_names_out(topic_modeller.vectorized_data)
+                    # feature_names = topic_modeller.vectorizer_model.get_feature_names()
+                    
+                    # st.write("Topics:")
+                    # for topic_idx, topic in enumerate(lda_topics):
+                    #     top_words_indices = topic.argsort()[:-10 - 1:-1]
+                    #     top_words = [feature_names[i] for i in top_words_indices]
+                    #     st.write(f"Topic {topic_idx + 1}: {' '.join(top_words)}")
+                        
+                elif topic_model_choice == 'BERTopic':
+                    # Initialize the TopicModeller class
+                    topic_modeller = TopicModeller(algorithm='BERTopic')
+                    sent = df_prep[target_column].tolist()
+                    sentences, topics, probs = topic_modeller.generate_topics(sent)
+                    topic_info = topic_modeller.get_topic_info()
+                    st.write(topic_info)
 
-                st.success("Success! I have discovered potential new topics for you.")
+                
+                
+                
+                
+                #  HERE 
+                # if st.button('🤖 Click to discover topics.'):
+                    # st.info('Discovering topics...')
+                    
+                    # # Initialize the TopicModeller class
+                    # topic_modeller = TopicModeller()
+                    # sent = df_prep[target_column].tolist()
+                    # sentences, topics, probs = topic_modeller.generate_topics(sent)
+                    # # st.write(topics)
+                    # topic_info = topic_modeller.get_topic_info()
+                    # st.write(topic_info)
+                    
+                    
+                    # topic_modeller = BERTopic(embedding_model='sentence-transformers/LaBSE', language="multilingual",
+                    #                         calculate_probabilities=True, verbose=True)
+                    # topics, probs = topic_modeller.fit_transform(df_prep[target_column].tolist())
+                    # topic_modeller = TopicModeller()
+                    # sent = df_prep[target_column].tolist()
+                    # topic_modeller.generate_topics(df_prep[target_column].tolist())
+                    # sentences, topics, probs = topic_modeller.generate_topics(sent)
+                    # topic_info = topic_modeller.get_topic_info(topics)
+                    # st.write(topic_info)
+                    
+                    
+                    # topics = topic_modeller.generate_topics(df_prep[target_column].tolist())
+                    # freq = topic_modeller.get_topic_info()
+                    # st.write(freq)
+                    
+                    
+                #     # Display the topics
+                #     st.subheader("Topics")
+                #     st.write(topics)
+                #     st.success("Success! I have discovered potential new topics for you.")
 
-                # Get topic information
-                # topic_info = topic_modeller.get_topic_info(topics)
-                freq = topic_modeller.get_topic_info()
-                st.write(freq)
+                #     # Get topic information
+                #     topic_info = topics.get_topic_info(topics)
+                #     st.subheader("Topic Information")
+                #     st.write(topic_info)
+                
+                
+                
+                
+                # preprocessor = DataPreprocessor()
+                # # df_prepr = preprocessor.remove_null_data(df, [target_column])
+                # # df_prep = preprocessor.preprocess_data(df, target_column)
+                # # if st.button('🤖 Click to discover topics from your data.'):
+                #     # st.info('Initiating process...')
+                    
+                #     # Generate topics
+                    # topic_modeller = BERTopic(embedding_model='sentence-transformers/LaBSE', language="multilingual",
+                                            # calculate_probabilities=True, verbose=True)
+                    
+                #     topics, probs = topic_modeller.fit_transform(df_prep[target_column].tolist())
+                    
+                    # topic_modeller = TopicModeller()
+                    # sent = df_prep[target_column].tolist()
+                    # topic_modeller.generate_topics(df_prep[target_column].tolist())
+                    # sentences, topics, probs = topic_modeller.generate_topics(sent)
+                    # topic_info = topic_modeller.get_topic_info(topics)
+                    # st.write(topic_info)
 
-                st.write('You can view some information on your topics by the visualizations formed below.')
+                #     st.success("Success! I have discovered potential new topics for you.")
+
+                    # Get topic information
+                    # topic_info = topic_modeller.get_topic_info(topics)
+                    # freq = topic_modeller.get_topic_info()
+                    # st.write(freq)
+
+                    # st.write('You can view some information on your topics by the visualizations formed below.')
 
                 # tab1, tab2, tab3 = st.tabs(["Word scores", "Topic map", "Table"])
 

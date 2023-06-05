@@ -23,6 +23,7 @@ clean-text = "*"
 spacy = "*"
 wordcloud = "*"
 plotly-express = "*"
+gensim = "*"
 
 [dev-packages]
 

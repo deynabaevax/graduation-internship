@@ -23,19 +23,17 @@ class DataPreprocessor:
     def __init__(self):
         self.nlp_nl = spacy.load("nl_core_news_sm")
         self.nlp_en = spacy.load("en_core_web_sm")
-        
     
     def get_analysis_values(self, df, target_column=None):
-        st.write(f'The shape of your dataframe is: `{df.shape}`')
-        # fig = px.histogram(df, x=target_column, title = "Distribution of Topics")
-        # st.plotly_chart(fig)
+        st.write(f'The shape _(rows, columns)_ of your dataframe is: `{df.shape}`')
+        # st.write("The number of unique words: " + len(set([word for document in df[target_column] for word in document])))
         st.write('**Most frequent words**')
         st.write('Below, you can see the top keywords in the entire dataset.')
         wordcloud2 = WordCloud().generate(' '.join(df[target_column]))
         wordfig = plt.figure(figsize=(10, 8), facecolor=None)
         plt.imshow(wordcloud2)
         plt.axis("off")
-        
+
         return st.pyplot(wordfig)
         
     def clean_text(self, text):
@@ -51,6 +49,9 @@ class DataPreprocessor:
         
         # remove emails
         text = re.sub(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", "", text)
+        
+        # remove events
+        text = re.sub(r"\b\w*ev\w*\b|\b\w*event\w*\b", "", text)
       
         # remove numbers
         text = re.sub(r"\d+", "", text)
@@ -92,8 +93,17 @@ class DataPreprocessor:
         return " ".join(lemmatized_tokens)
         
     def remove_null_data(self, df, columns=None):
-        df.dropna(subset=columns, inplace=True)
+        if columns is None:
+            columns = df.columns
+
+        # Check for null values in each row
+        null_mask = df[columns].isnull().any(axis=1)
+
+        # Drop rows with null values
+        df = df[~null_mask]
+
         return df
+
     
     def preprocess_data(self, data, target_column=None):
         # Read the data into a DataFrame
@@ -127,3 +137,4 @@ class DataPreprocessor:
         df = df[final_columns]
 
         return df
+
