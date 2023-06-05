@@ -19,11 +19,18 @@ st.set_page_config(
     initial_sidebar_state="auto",
 )
 
-@st.cache_data
 def convert_df(df, file_format):
     if file_format == 'csv':
         csv_data = df.to_csv(index=False).encode('utf-8')
         return csv_data
+    elif file_format == 'excel':
+        excel_data = BytesIO()
+        with pd.ExcelWriter(excel_data, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False)
+        excel_data.seek(0)
+        return excel_data
+    else:
+        return None
 
 def main():
     st.title("Discover new topics using BERTopic")
@@ -89,27 +96,19 @@ def main():
             
             # Download the data if the df is not empty
             if df_prep is not None and not df_prep.empty:
-                csv = convert_df(df_prep, "csv")
-                
-                st.download_button(
-                    "📥 Download the result",
-                    data=csv,
-                    file_name="preprocessed.csv",
-                    key='download-csv'
-                )
+                st.sidebar.markdown("### Download the result")
+                file_format = st.sidebar.selectbox("Select file format", ["csv", "excel"], key='file-format')
+                file_data = convert_df(df_prep, file_format)
+
+                if file_data is not None:
+                    st.sidebar.download_button(
+                        "📥 Download the result",
+                        data=file_data,
+                        file_name=f"preprocessed.{file_format}",
+                        key='download-file'
+                    )
         
         elif task == "Topic Modelling":
-            # Create a dropdown menu in the sidebar to select the topic modelling algorithm
-            topic_model_options = ['BERTopic', 'LDA']
-            st.sidebar.markdown("### Select an algorithm")
-            topic_model_choice = st.sidebar.selectbox('Topic Modelling Algorithms', topic_model_options)
-            
-            # Initialize the topic modeller based on the selected algorithm
-            if topic_model_choice == 'BERTopic':
-                topic_modeller = TopicModeller(algorithm='bertopic')
-            elif topic_model_choice == 'LDA':
-                topic_modeller = TopicModeller(algorithm='lda')
-    
             if df_prep is None or df_prep.empty:
                 # Perform preprocessing first
                 try:
@@ -125,222 +124,30 @@ def main():
                     pass
             
             if df_prep is not None and not df_prep.empty:
-                if topic_model_choice == 'LDA':
-                    n_components = st.sidebar.number_input("Number of Topics", min_value=2, max_value=10, value=3)
-                    topic_modeller = TopicModeller(algorithm='lda')
-                    sent = df_prep[target_column].tolist()
-                    sentences, topics, probs = topic_modeller.generate_topics(sent, n_components)
-                    # Display the topics and top words
-                    feature_names = topic_modeller.lda_model.get_topic_info().columns.tolist()
-                    st.write("Topics:")
-                    st.write(feature_names)
-                    # for topic_idx, topic in enumerate(topic_modeller.lda_model.components_):
-                    #     top_words_indices = topic.argsort()[:-10 - 1:-1]
-                    #     top_words = [feature_names[i] for i in top_words_indices]
-                    #     st.write(f"Topic {topic_idx + 1}: {' '.join(top_words)}")
-                    
-                    # n_components = st.sidebar.number_input("Number of Topics", min_value=2, max_value=10, value=3)
-                    # sent = df_prep[target_column].tolist()
-                    # sentences, topics, probs = topic_modeller.generate_topics(sent, n_components)
-                    # lda_topics = topic_modeller.lda_model.get_feature_names_out(topic_modeller.vectorized_data)
-                    # feature_names = topic_modeller.vectorizer_model.get_feature_names()
-                    
-                    # st.write("Topics:")
-                    # for topic_idx, topic in enumerate(lda_topics):
-                    #     top_words_indices = topic.argsort()[:-10 - 1:-1]
-                    #     top_words = [feature_names[i] for i in top_words_indices]
-                    #     st.write(f"Topic {topic_idx + 1}: {' '.join(top_words)}")
-                        
-                elif topic_model_choice == 'BERTopic':
                     # Initialize the TopicModeller class
-                    topic_modeller = TopicModeller(algorithm='BERTopic')
+                    topic_modeller = TopicModeller()
                     sent = df_prep[target_column].tolist()
+                    st.info("Topics are being generated...")
+                                        
                     sentences, topics, probs = topic_modeller.generate_topics(sent)
                     topic_info = topic_modeller.get_topic_info()
+                    st.success("The app has discovered the following potential topics: ")
+
                     st.write(topic_info)
+                    
+                    if topic_info is not None and not topic_info.empty:
+                        st.sidebar.markdown("### Download the result")
+                        file_format = st.sidebar.selectbox("Select file format", ["csv", "excel"], key='file-format')
+                        file_ = convert_df(topic_info, file_format)
 
+                        if file_ is not None:
+                            st.sidebar.download_button(
+                                "📥 Download the result",
+                                data=file_,
+                                file_name=f"preprocessed.{file_format}",
+                                key='download-file'
+                            )
+                  
                 
-                
-                
-                
-                #  HERE 
-                # if st.button('🤖 Click to discover topics.'):
-                    # st.info('Discovering topics...')
-                    
-                    # # Initialize the TopicModeller class
-                    # topic_modeller = TopicModeller()
-                    # sent = df_prep[target_column].tolist()
-                    # sentences, topics, probs = topic_modeller.generate_topics(sent)
-                    # # st.write(topics)
-                    # topic_info = topic_modeller.get_topic_info()
-                    # st.write(topic_info)
-                    
-                    
-                    # topic_modeller = BERTopic(embedding_model='sentence-transformers/LaBSE', language="multilingual",
-                    #                         calculate_probabilities=True, verbose=True)
-                    # topics, probs = topic_modeller.fit_transform(df_prep[target_column].tolist())
-                    # topic_modeller = TopicModeller()
-                    # sent = df_prep[target_column].tolist()
-                    # topic_modeller.generate_topics(df_prep[target_column].tolist())
-                    # sentences, topics, probs = topic_modeller.generate_topics(sent)
-                    # topic_info = topic_modeller.get_topic_info(topics)
-                    # st.write(topic_info)
-                    
-                    
-                    # topics = topic_modeller.generate_topics(df_prep[target_column].tolist())
-                    # freq = topic_modeller.get_topic_info()
-                    # st.write(freq)
-                    
-                    
-                #     # Display the topics
-                #     st.subheader("Topics")
-                #     st.write(topics)
-                #     st.success("Success! I have discovered potential new topics for you.")
-
-                #     # Get topic information
-                #     topic_info = topics.get_topic_info(topics)
-                #     st.subheader("Topic Information")
-                #     st.write(topic_info)
-                
-                
-                
-                
-                # preprocessor = DataPreprocessor()
-                # # df_prepr = preprocessor.remove_null_data(df, [target_column])
-                # # df_prep = preprocessor.preprocess_data(df, target_column)
-                # # if st.button('🤖 Click to discover topics from your data.'):
-                #     # st.info('Initiating process...')
-                    
-                #     # Generate topics
-                    # topic_modeller = BERTopic(embedding_model='sentence-transformers/LaBSE', language="multilingual",
-                                            # calculate_probabilities=True, verbose=True)
-                    
-                #     topics, probs = topic_modeller.fit_transform(df_prep[target_column].tolist())
-                    
-                    # topic_modeller = TopicModeller()
-                    # sent = df_prep[target_column].tolist()
-                    # topic_modeller.generate_topics(df_prep[target_column].tolist())
-                    # sentences, topics, probs = topic_modeller.generate_topics(sent)
-                    # topic_info = topic_modeller.get_topic_info(topics)
-                    # st.write(topic_info)
-
-                #     st.success("Success! I have discovered potential new topics for you.")
-
-                    # Get topic information
-                    # topic_info = topic_modeller.get_topic_info(topics)
-                    # freq = topic_modeller.get_topic_info()
-                    # st.write(freq)
-
-                    # st.write('You can view some information on your topics by the visualizations formed below.')
-
-                # tab1, tab2, tab3 = st.tabs(["Word scores", "Topic map", "Table"])
-
-                # with tab1:
-                #     st.subheader("Topic Word Scores")
-                #     with st.expander("See information"):
-                #         st.write('''
-                #             The topic word score presents bar graphs that indicate the scores for the assigned keywords each document in a corpus.
-                #         ''')
-
-                #         # Visualize topic word scores
-                #         wordscore = topic_modeller.topic_model.visualize_topics()
-                #         st.plotly_chart(wordscore)
-
-                # with tab2:
-                #     st.subheader("Intertopic Distance Map")
-                #     with st.expander("See information"):
-                #         st.write('''
-                #             The intertopic distance map is a visualization that shows bubbles of different topics and how similar they are to one another. 
-                #             The closer the two bubbles are to each other, the more semantically similar the two topics are.
-                #         ''')
-                #         # Visualize intertopic distance map
-                #         intertopic_distance_map = topic_modeller.topic_model.visualize_topics()
-                #         st.plotly_chart(intertopic_distance_map)
-
-                # with tab3:
-                #     st.subheader("Table overview")
-                #     st.subheader("Topics")
-                #     st.write(topics)
-                #     st.subheader("Topic Info")
-                #     st.write(topic_info)
-                        # freq = topic_model.get_topic_info()
-                        # csv = topic_model.convert_df(freq)
-                        # st.download_button('Download file', 
-                        #                    data=csv,
-                        #                    file_name='topics_discovered.csv',
-                        #                    mime='text/csv',)
-                        # st.table(freq)
-
-                # st.subheader("Topics")
-                # st.write(topics)
-                # st.subheader("Probabilities")
-                # st.write(probs)
-            # if target_column is None:
-            #     st.sidebar.warning("Please enter the target column name.")
-            # else:
-            # if df_prep is not None:
-            #     if st.button('🤖 Click to discover topics from your data.'):
-            #         st.info('Initiating process...')
-            #         topic_modeller = TopicModeller()
-            #         #  Generate topics
-            #         topics, probs = topic_modeller.generate_topics(df_prep[target_column].tolist())                    
-
-            #         st.success("Success! I have discovered potential new topics for you.")
-                        
-            #         # input_topics_freq_0 = topic_model.get_topic_info()
-            #         st.write('You can view some information on your topics by the visualizations formed below.')
-                    
-            #         tab1, tab2, tab3 = st.tabs(["Word scores", "Topic map", "Table"])
-
-            #         with tab1:
-            #             st.subheader("Topic Word Scores")
-            #             with st.expander("See information"):
-            #                 st.write('''
-            #                         The topic word score presents bar graphs that indicate the scores for the assigned keywords each document in a corpus.
-            #                         ''')
-                            
-            #             # wordscore = topic_model.visualize_barchart(topics=[1,2,3,4,5,6,7,8,9,10])
-            #             # st.plotly_chart(wordscore)
-
-            #         with tab2:
-            #             st.subheader("Intertopic Distance Map")
-            #             with st.expander("See information"):
-            #                 st.write('''
-            #                         The intertopic distance map is a visualization that shows bubbles of different topics and how similar they are to one another. 
-            #                         The close the two bubbles are to each other, the more semantically similar the two topics are.
-            #                         ''')
-            #             # intertopic_distance_map = topic_model.visualize_topics()
-            #             # st.plotly_chart(intertopic_distance_map)
-
-            #         with tab3:
-            #             st.subheader("Table overview")
-            #             st.subheader("Topics")
-            #             st.write(topics)
-            #             # freq = topic_model.get_topic_info()
-            #             # csv = topic_model.convert_df(freq)
-            #             # st.download_button('Download file', 
-            #             #                    data=csv,
-            #             #                    file_name='topics_discovered.csv',
-            #             #                    mime='text/csv',)
-            #             # st.table(freq)
-                
-                
-            #     topic_modeller = TopicModeller()
-            #     st.info('Initiating Process. Sit back and grab a coffee, while I discover potential topic names from your keywords.')
-            #     #  Generate topics
-            #     topics, probs = topic_modeller.generate_topics(df_prep[target_column].tolist())
-            #     st.subheader("Topics")
-            #     st.write(topics)
-            #     st.subheader("Probabilities")
-            #     st.write(probs)
-
-            
-            # sentences = df_prep[target_column].tolist()
-            # topics, probs = topic_modeller.generate_topics(sentences)
-            # st.write("Number of topics:", len(topics))
-            # st.write("Topics:", topics)
-            # st.write("Probabilities:", probs)
-
 if __name__ == "__main__":
     main()
-
