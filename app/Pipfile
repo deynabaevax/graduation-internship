@@ -25,6 +25,7 @@ wordcloud = "*"
 plotly-express = "*"
 gensim = "*"
 xlsxwriter = "*"
+smart-open = "==6.3.0"
 
 [dev-packages]
 
