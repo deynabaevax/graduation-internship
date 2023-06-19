@@ -14,6 +14,9 @@ from sklearn.decomposition import LatentDirichletAllocation
 from gensim.models import LdaModel
 from gensim.corpora import Dictionary
 import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+import seaborn as sns
+import re
 
 class TopicModeller:
     def __init__(self):
@@ -39,7 +42,7 @@ class TopicModeller:
             embedding_model=self.sentence_model,
             umap_model=self.umap_model,
             hdbscan_model=self.hdbscan_model,
-            # min_topic_size=10,
+            min_topic_size=10,
             nr_topics="auto",
             vectorizer_model=self.vectorizer_model,
             ctfidf_model=self.ctfidf_model,
@@ -49,26 +52,44 @@ class TopicModeller:
         new_topics = self.topic_model.reduce_outliers(sentences, topics)
 
         return sentences, new_topics, probs
+        # return sentences, probs
 
     def get_intertopic_map(self):
         fig = self.topic_model.visualize_topics()
         return fig.data if isinstance(fig, go.Figure) else fig
 
-    def get_topic_info(self):
-        if self.topic_model is not None:
-            topic_info = self.topic_model.get_topic_info()
-            
-            # Rename the 'Topic' column to your custom column name
-            topic_info = topic_info.rename(columns={'Topic': 'Topic nr', 'Count': 'Topics', 'Name': 'Topic names', 'Representation': 'Words forming the topic', 'Representative_Docs': 'Queries forming the topic'})
-            
-            return topic_info
+    def visualize_barchart(self):
+        topic_info = self.get_topic_info()
+        if topic_info is not None:
+            fig, ax = plt.subplots(figsize=(10, 6))
+            sns.barplot(data=topic_info, x='Count', y='Topic name', ax=ax)
+            ax.set_xlabel('Count')
+            ax.set_ylabel('Topic name')
+            ax.set_title('Topic Distribution')
+            st.pyplot(fig)
         else:
-            return None
-
+            st.write('No topic information available.')
 
     def get_topic_info(self):
         if self.topic_model is not None:
             topic_info = self.topic_model.get_topic_info()
+            
+            # Rename the columns
+            topic_info = topic_info.rename(columns={
+                'Name': 'Topic name',
+                'Representation': 'Words forming the topic',
+                'Representative_Docs': 'Most common user queries'
+            })
+
+           # Remove the prefix number from the 'Name' column except for names starting with -1
+            topic_info['Topic name'] = topic_info.apply(
+                lambda row: row['Topic name'] if row['Topic name'].startswith('-1') else re.sub(r'^\d+_', '', row['Topic name']),
+                axis=1
+            )
+
+            # Keep only the desired columns
+            topic_info = topic_info[['Count', 'Topic name', 'Words forming the topic', 'Most common user queries']]
+
             return topic_info
         else:
             return None

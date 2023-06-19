@@ -11,6 +11,15 @@ from io import BytesIO
 import time
 from gensim.models import LdaModel
 from gensim.corpora import Dictionary
+import plotly.graph_objects as go
+import plotly.express as px
+import nltk
+nltk.download("stopwords")
+nltk.download("punkt")
+nltk.download("wordnet")
+nltk.download("omw-1.4")
+nltk.download("wordnet")
+nltk.download("averaged_perceptron_tagger")
 
 # Apply the theme to the app
 st.set_page_config(
@@ -32,6 +41,26 @@ def convert_df(df, file_format):
         return excel_data
     else:
         return None
+    
+def get_analysis_values(df, target_column=None):
+    st.write(f'The shape _(rows, columns)_ of your dataframe is: `{df.shape}`')
+    st.write('**Most frequent words**')
+
+    # Calculate word frequencies
+    word_frequencies = nltk.FreqDist(nltk.word_tokenize(" ".join(df[target_column])))
+
+    # Convert word frequencies to a dataframe
+    word_frequencies_df = pd.DataFrame(word_frequencies.items(), columns=["Word", "Frequency"])
+
+    # Sort the dataframe by frequency in descending order
+    word_frequencies_df = word_frequencies_df.sort_values("Frequency", ascending=False)
+
+    # Display the top 10 most common words in a table
+    st.table(word_frequencies_df.head(10))
+
+    # You can also visualize the word frequencies using a bar plot if desired
+    fig = px.bar(word_frequencies_df.head(10), x="Word", y="Frequency")
+    st.plotly_chart(fig)
 
 def main():
     st.title("Discover new topics using BERTopic")
@@ -107,7 +136,8 @@ def main():
                     df_prep = preprocessor.preprocess_data(df, target_column)
                     st.subheader("Preprocessed Data")
                     st.write(df_prep)
-                    analysis = preprocessor.get_analysis_values(df_prep, target_column)
+                    
+                    analysis = get_analysis_values(df_prep, target_column)
                     st.write(analysis)
             except:
                 pass
@@ -127,6 +157,33 @@ def main():
                     )
         
         elif task == "Topic Modelling":
+            if df_prep is None or df_prep.empty:
+                # Perform preprocessing first
+                try:
+                    # Display available columns
+                    st.sidebar.markdown("### Select a column")
+                    target_column = st.sidebar.selectbox("Columns present", df.columns)
+                    
+                    preprocessor = DataPreprocessor()
+                    
+                    if st.sidebar.button("Preprocess & model"):
+                        num_lines = len(df)
+                        progress_bar = st.progress(0)
+                        progress_text = st.empty()
+
+                        for i in range(num_lines):
+                            # Update the progress bar and text
+                            progress = int(100 * i / num_lines)
+                            progress_bar.progress(progress)
+                            progress_text.text(f"Data preprocessing progress: {progress}%")                            
+                            time.sleep(0.1) 
+
+                        # Clear the progress bar and text
+                        progress_bar.empty()
+                        progress_text.empty()
+                        df_prep = preprocessor.preprocess_data(df, target_column)
+                except:
+                    pass
             
             if df_prep is not None and not df_prep.empty:
                 if topic_modeller is None:
@@ -140,10 +197,23 @@ def main():
 
                 st.write(topic_info)
                 
+                # # Create tabs for different visuals
+                # tab1, tab2 = st.tabs(["Intertopic Distance Map", "Bar Chart"])
+                
+                # with tab1:
+                #     st.subheader("Intertopic Distance Map")
+                #     fig = topic_modeller.get_intertopic_map()
+                #     st.plotly_chart(fig)
+                
+                # with tab2:
+                #     st.subheader("Bar Chart")
+                #     fig = topic_modeller.visualize_barchart()
+                #     st.plotly_chart(fig)
+                
                 if topic_info is not None and not topic_info.empty:
                     st.sidebar.markdown("### Download the result")
                     file_format = st.sidebar.selectbox("Select file format", ["csv", "excel"], key='file-format')
-                    file_ = convert_df(topic_info, file_format)
+                    file_ = convert_df(df_prep, file_format)
 
                     if file_ is not None:
                         st.sidebar.download_button(
@@ -152,39 +222,6 @@ def main():
                             file_name=f"preprocessed.{file_format}",
                             key='download-file'
                         )
-                        
-            elif df_prep is None or df_prep.empty:
-                # Perform preprocessing first
-                try:
-                    # Display available columns
-                    st.sidebar.markdown("### Select a column")
-                    target_column = st.sidebar.selectbox("Columns present", df.columns)
-                    
-                    preprocessor = DataPreprocessor()
-                    
-                    if st.sidebar.button("Preprocess Data"):
-                        num_lines = len(df)
-                        progress_bar = st.progress(0)
-                        progress_text = st.empty()
-
-                        for i in range(num_lines):
-                            # Update the progress bar and text
-                            progress = int(100 * i / num_lines)
-                            progress_bar.progress(progress)
-                            progress_text.text(f"Data preprocessing progress: {progress}%")
-                            
-                            time.sleep(0.1)
-
-                        # Clear the progress bar and text
-                        progress_bar.empty()
-                        progress_text.empty()
-                        
-                        df_prep = preprocessor.preprocess_data(df, target_column)
-                        
-                except:
-                    pass
-            
-            
         
 if __name__ == "__main__":
     main()
