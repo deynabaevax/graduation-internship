@@ -57,6 +57,18 @@ class TopicModeller:
     def get_topic_info(self):
         if self.topic_model is not None:
             topic_info = self.topic_model.get_topic_info()
+            
+            # Rename the 'Topic' column to your custom column name
+            topic_info = topic_info.rename(columns={'Topic': 'Topic nr', 'Count': 'Topics', 'Name': 'Topic names', 'Representation': 'Words forming the topic', 'Representative_Docs': 'Queries forming the topic'})
+            
+            return topic_info
+        else:
+            return None
+
+
+    def get_topic_info(self):
+        if self.topic_model is not None:
+            topic_info = self.topic_model.get_topic_info()
             return topic_info
         else:
             return None

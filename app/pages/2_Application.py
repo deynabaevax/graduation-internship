@@ -8,6 +8,7 @@ from bertopic import BERTopic
 from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.feature_extraction.text import CountVectorizer
 from io import BytesIO
+import time
 from gensim.models import LdaModel
 from gensim.corpora import Dictionary
 
@@ -36,9 +37,9 @@ def main():
     st.title("Discover new topics using BERTopic")
     st.info('''
         \n
-        💡 To kickstart your topic exploration, upload your file on the left sidebar, select the desired task and column for exploring, and hit enter! 
+        To kickstart your topic exploration, upload your file on the left sidebar, select the desired task and column for exploring. 
         Let the discovery begin!
-        ''')
+        ''', icon="💡")
     
     st.sidebar.markdown("### Select a task")
 
@@ -85,12 +86,29 @@ def main():
                 target_column = st.sidebar.selectbox("Columns present", df.columns)
                 
                 preprocessor = DataPreprocessor()
-                st.info("Your data is being preprocessed...")
-                df_prep = preprocessor.preprocess_data(df, target_column)
-                st.subheader("Preprocessed Data")
-                st.write(df_prep)
-                analysis = preprocessor.get_analysis_values(df_prep, target_column)
-                st.write(analysis)
+                if st.sidebar.button("Preprocess Data"):
+                
+                    num_lines = len(df)
+                    progress_bar = st.progress(0)
+                    progress_text = st.empty()
+
+                    for i in range(num_lines):
+                        # Update the progress bar and text
+                        progress = int(100 * i / num_lines)
+                        progress_bar.progress(progress)
+                        progress_text.text(f"Data preprocessing progress: {progress}%")
+                        
+                        time.sleep(0.1)
+
+                    # Clear the progress bar and text
+                    progress_bar.empty()
+                    progress_text.empty()
+                
+                    df_prep = preprocessor.preprocess_data(df, target_column)
+                    st.subheader("Preprocessed Data")
+                    st.write(df_prep)
+                    analysis = preprocessor.get_analysis_values(df_prep, target_column)
+                    st.write(analysis)
             except:
                 pass
             
@@ -109,7 +127,33 @@ def main():
                     )
         
         elif task == "Topic Modelling":
-            if df_prep is None or df_prep.empty:
+            
+            if df_prep is not None and not df_prep.empty:
+                if topic_modeller is None:
+                    # Initialize the TopicModeller class
+                    topic_modeller = TopicModeller()
+                    sent = df_prep[target_column].tolist()
+                    topic_modeller.generate_topics(sent)
+                
+                topic_info = topic_modeller.get_topic_info()
+                st.success("The app has discovered the following potential topics: ")
+
+                st.write(topic_info)
+                
+                if topic_info is not None and not topic_info.empty:
+                    st.sidebar.markdown("### Download the result")
+                    file_format = st.sidebar.selectbox("Select file format", ["csv", "excel"], key='file-format')
+                    file_ = convert_df(topic_info, file_format)
+
+                    if file_ is not None:
+                        st.sidebar.download_button(
+                            "📥 Download the result",
+                            data=file_,
+                            file_name=f"preprocessed.{file_format}",
+                            key='download-file'
+                        )
+                        
+            elif df_prep is None or df_prep.empty:
                 # Perform preprocessing first
                 try:
                     # Display available columns
@@ -117,37 +161,30 @@ def main():
                     target_column = st.sidebar.selectbox("Columns present", df.columns)
                     
                     preprocessor = DataPreprocessor()
-                    df_prep = preprocessor.preprocess_data(df, target_column)
-                    st.success("The data is processed.")
-                    # st.write("__Please click on the button to start the topic discovery.__")
+                    
+                    if st.sidebar.button("Preprocess Data"):
+                        num_lines = len(df)
+                        progress_bar = st.progress(0)
+                        progress_text = st.empty()
+
+                        for i in range(num_lines):
+                            # Update the progress bar and text
+                            progress = int(100 * i / num_lines)
+                            progress_bar.progress(progress)
+                            progress_text.text(f"Data preprocessing progress: {progress}%")
+                            
+                            time.sleep(0.1)
+
+                        # Clear the progress bar and text
+                        progress_bar.empty()
+                        progress_text.empty()
+                        
+                        df_prep = preprocessor.preprocess_data(df, target_column)
+                        
                 except:
                     pass
             
-            if df_prep is not None and not df_prep.empty:
-                    # Initialize the TopicModeller class
-                    topic_modeller = TopicModeller()
-                    sent = df_prep[target_column].tolist()
-                    st.info("Topics are being generated...")
-                                        
-                    sentences, topics, probs = topic_modeller.generate_topics(sent)
-                    topic_info = topic_modeller.get_topic_info()
-                    st.success("The app has discovered the following potential topics: ")
-
-                    st.write(topic_info)
-                    
-                    if topic_info is not None and not topic_info.empty:
-                        st.sidebar.markdown("### Download the result")
-                        file_format = st.sidebar.selectbox("Select file format", ["csv", "excel"], key='file-format')
-                        file_ = convert_df(topic_info, file_format)
-
-                        if file_ is not None:
-                            st.sidebar.download_button(
-                                "📥 Download the result",
-                                data=file_,
-                                file_name=f"preprocessed.{file_format}",
-                                key='download-file'
-                            )
-                  
-                
+            
+        
 if __name__ == "__main__":
     main()
