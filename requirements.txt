@@ -1,0 +1,8 @@
+python===3.10.4
+bertopic
+pandas
+streamlit
+mime
+scikit-learn
+numpy
+matplotlib

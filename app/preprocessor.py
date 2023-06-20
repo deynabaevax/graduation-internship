@@ -16,7 +16,6 @@ nltk.download("omw-1.4")
 nltk.download("wordnet")
 nltk.download("averaged_perceptron_tagger")
 from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer 
 import mimetypes
 
 class DataPreprocessor:
@@ -24,17 +23,39 @@ class DataPreprocessor:
         self.nlp_nl = spacy.load("nl_core_news_sm")
         self.nlp_en = spacy.load("en_core_web_sm")
     
-    def get_analysis_values(self, df, target_column=None):
-        st.write(f'The shape _(rows, columns)_ of your dataframe is: `{df.shape}`')
-        # st.write("The number of unique words: " + len(set([word for document in df[target_column] for word in document])))
+    
+    def get_analysis_values(self, df_prep, target_column=None):
+        st.write(f'The shape _(rows, columns)_ of your dataframe is: `{df_prep.shape}`')
         st.write('**Most frequent words**')
-        st.write('Below, you can see the top keywords in the entire dataset.')
-        wordcloud2 = WordCloud().generate(' '.join(df[target_column]))
-        wordfig = plt.figure(figsize=(10, 8), facecolor=None)
-        plt.imshow(wordcloud2)
-        plt.axis("off")
+        
+        # Calculate word frequencies
+        word_frequencies = nltk.FreqDist(nltk.word_tokenize(" ".join(df_prep[target_column])))
 
-        return st.pyplot(wordfig)
+        # Convert word frequencies to a dataframe
+        word_frequencies_df = pd.DataFrame(word_frequencies.items(), columns=["Word", "Frequency"])
+
+        # Sort the dataframe by frequency in descending order
+        word_frequencies_df = word_frequencies_df.sort_values("Frequency", ascending=False)
+
+        # Display the top 10 most common words in a table
+        st.table(word_frequencies_df.head(10))
+
+        # You can also visualize the word frequencies using a bar plot if desired
+        fig = px.bar(word_frequencies_df.head(10), x="Word", y="Frequency")
+        st.plotly_chart(fig)
+        
+        
+    # def get_analysis_values(self, df, target_column=None):
+    #     st.write(f'The shape _(rows, columns)_ of your dataframe is: `{df.shape}`')
+    #     # st.write("The number of unique words: " + len(set([word for document in df[target_column] for word in document])))
+    #     st.write('**Most frequent words**')
+    #     st.write('Below, you can see the top keywords in the entire dataset.')
+    #     wordcloud2 = WordCloud().generate(' '.join(df[target_column]))
+    #     wordfig = plt.figure(figsize=(10, 8), facecolor=None)
+    #     plt.imshow(wordcloud2)
+    #     plt.axis("off")
+
+    #     return st.pyplot(wordfig)
         
     def clean_text(self, text):
         # lowercasing text 
