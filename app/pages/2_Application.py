@@ -29,18 +29,39 @@ st.set_page_config(
     initial_sidebar_state="auto",
 )
 
-def convert_df(df, file_format):
-    if file_format == 'csv':
-        csv_data = df.to_csv(index=False).encode('utf-8')
-        return csv_data
-    elif file_format == 'excel':
-        excel_data = BytesIO()
-        with pd.ExcelWriter(excel_data, engine='xlsxwriter') as writer:
-            df.to_excel(writer, index=False)
-        excel_data.seek(0)
-        return excel_data
-    else:
-        return None
+# def convert_df(df, file_format):
+#     if file_format == 'csv':
+#         csv_data = df.to_csv(index=False).encode('utf-8')
+#         return csv_data
+#     elif file_format == 'excel':
+#         excel_data = BytesIO()
+#         with pd.ExcelWriter(excel_data, engine='xlsxwriter') as writer:
+#             df.to_excel(writer, index=False)
+#         excel_data.seek(0)
+#         return excel_data
+#     else:
+#         return None
+    
+def download_excel(excel_file):
+    with open(excel_file, "rb") as f:
+        excel_data = f.read()
+    b64 = base64.b64encode(excel_data).decode()
+    href = f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' \
+           f'{b64}" download="data.xlsx"><input type="button" value="Download Excel File"></a>'
+    st.markdown(href, unsafe_allow_html=True)
+    
+def download_csv(dataframe):
+    csv = dataframe.to_csv(index=False)
+    b64 = base64.b64encode(
+        csv.encode()
+    ).decode()  # some strings <-> bytes conversions necessary here
+    href = f'<a href="data:file/csv;base64,{b64}" download="data.csv"><input type="button" value="Download CSV File"></a>'
+    st.markdown(href, unsafe_allow_html=True)
+
+# def download_csv(csv_file):
+#     b64 = base64.b64encode(csv_file).decode()
+#     href = f'<a href="data:text/csv;base64,{b64}" download="data.csv"><input type="button" value="Download CSV File"></a>'
+#     st.markdown(href, unsafe_allow_html=True)
     
 def get_analysis_values(df, target_column=None):
     st.write(f'The shape _(rows, columns)_ of your dataframe is: `{df.shape}`')
@@ -136,25 +157,61 @@ def main():
                     df_prep = preprocessor.preprocess_data(df, target_column)
                     st.subheader("Preprocessed Data")
                     st.write(df_prep)
+                    st.divider()
                     
                     analysis = get_analysis_values(df_prep, target_column)
                     st.write(analysis)
+                    st.divider()
             except:
                 pass
             
-            # Download the data if the df is not empty
-            if df_prep is not None and not df_prep.empty:
-                st.sidebar.markdown("### Download the result")
-                file_format = st.sidebar.selectbox("Select file format", ["csv", "excel"], key='file-format')
-                file_data = convert_df(df_prep, file_format)
+            tab1, tab2 = st.tabs(["Results .CSV", "Results .XLSX"])
+                
+            with tab1:
+                if df_prep is not None and not df_prep.empty:
+                    st.subheader("Download results")
+                    st.info("Download the results of the data preprocessing in .CSV", icon="📥")
+                    download_csv(df_prep)
+                        
+            with tab2:
+                st.subheader("Download results")
+                st.info("Download the results of the data preprocessing in .XLSX", icon="📥")
+                output_df = df_prep
+                try:
+                    with pd.ExcelWriter("preprocessed.xlsx") as writer:
+                        output_df.to_excel(writer, sheet_name="Preprocessed data", index=False)
+                        download_excel("preprocessed.xlsx")
+                except:
+                    pass
+        
+            # # Download the data if the df is not empty
+            # if df_prep is not None and not df_prep.empty:
+            #     st.info("Download the results of the preprocessing in .CSV or .XLSX", icon="📥")
+            #     download_csv(df_prep)
+            #     output_df = df_prep
+            #     with pd.ExcelWriter("data.xlsx") as writer:
+            #         output_df.to_excel(writer, sheet_name="Preprocessed-data", index=False)
+            #     download_excel("data.xlsx")
+                
+                
+                # st.sidebar.markdown("### Download the result")
+                # file_format = st.sidebar.selectbox("Select file format", ["csv", "excel"], key='file-format')
+                # file_data = convert_df(df_prep, file_format)
 
-                if file_data is not None:
-                    st.sidebar.download_button(
-                        "📥 Download the result",
-                        data=file_data,
-                        file_name=f"preprocessed.{file_format}",
-                        key='download-file'
-                    )
+                # if file_data is not None:
+                #     if file_format == 'csv':
+                #         download_csv("preprocessed.csv")
+                #     elif file_format == 'excel':
+                #         download_excel("preprocessed.xlsx")
+
+
+                # if file_data is not None: 
+                #     st.sidebar.download_button(
+                #         "📥 Download the result",
+                #         data=file_data,
+                #         file_name=f"preprocessed.{file_format}",
+                #         key='download-file'
+                #     )
         
         elif task == "Topic Modelling":
             if df_prep is None or df_prep.empty:
@@ -196,6 +253,7 @@ def main():
                 st.success("The app has discovered the following potential topics: ")
 
                 st.write(topic_info)
+                st.divider()
                 
                 # # Create tabs for different visuals
                 # tab1, tab2 = st.tabs(["Intertopic Distance Map", "Bar Chart"])
@@ -210,18 +268,43 @@ def main():
                 #     fig = topic_modeller.visualize_barchart()
                 #     st.plotly_chart(fig)
                 
-                if topic_info is not None and not topic_info.empty:
-                    st.sidebar.markdown("### Download the result")
-                    file_format = st.sidebar.selectbox("Select file format", ["csv", "excel"], key='file-format')
-                    file_ = convert_df(df_prep, file_format)
+                tab1, tab2 = st.tabs(["Results .CSV", "Results .XLSX"])
+                
+                with tab1:
+                    if topic_info is not None and not topic_info.empty:
+                        st.subheader("Download results")
+                        st.info("Download the results of the topic modelling in .CSV", icon="📥")
+                        download_csv(topic_info)
+                        
+                with tab2:
+                    st.subheader("Download results")
+                    st.info("Download the results of the topic modelling in .XLSX", icon="📥")
+                    output_df = topic_info
+                    with pd.ExcelWriter("topics.xlsx") as writer:
+                        output_df.to_excel(writer, sheet_name="Generated topics", index=False)
+                    download_excel("topics.xlsx")
+                
+                # if topic_info is not None and not topic_info.empty:
+                #     st.subheader("Download results")
+                #     st.info("Download the results of the topic modelling in .CSV or .XLSX", icon="📥")
+                #     download_csv(topic_info)
+                #     output_df = topic_info
+                #     with pd.ExcelWriter("topics.xlsx") as writer:
+                #         output_df.to_excel(writer, sheet_name="Generated topics", index=False)
+                #     download_excel("topics.xlsx")
+                    
+                    
+                    # st.sidebar.markdown("### Download the result")
+                    # file_format = st.sidebar.selectbox("Select file format", ["csv", "excel"], key='file-format')
+                    # file_ = convert_df(df_prep, file_format)
 
-                    if file_ is not None:
-                        st.sidebar.download_button(
-                            "📥 Download the result",
-                            data=file_,
-                            file_name=f"preprocessed.{file_format}",
-                            key='download-file'
-                        )
+                    # if file_ is not None:
+                    #     st.sidebar.download_button(
+                    #         "📥 Download the result",
+                    #         data=file_,
+                    #         file_name=f"preprocessed.{file_format}",
+                    #         key='download-file'
+                    #     )
         
 if __name__ == "__main__":
     main()

@@ -55,11 +55,14 @@ class TopicModeller:
         # return sentences, probs
 
     def get_intertopic_map(self):
-        fig = self.topic_model.visualize_topics()
-        return fig.data if isinstance(fig, go.Figure) else fig
+        return self.topic_model.visualize_topics().data
+        # fig = self.topic_model.visualize_topics()
+        # return fig.data if isinstance(fig, go.Figure) else fig
+        # return self.topic_model.visualize_topics()
 
     def visualize_barchart(self):
-        topic_info = self.get_topic_info()
+        # topic_info = self.get_topic_info()
+        topic_info = self.get_topic_info().copy()
         if topic_info is not None:
             fig, ax = plt.subplots(figsize=(10, 6))
             sns.barplot(data=topic_info, x='Count', y='Topic name', ax=ax)

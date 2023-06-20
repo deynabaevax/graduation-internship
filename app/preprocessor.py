@@ -15,14 +15,6 @@ nltk.download("wordnet")
 nltk.download("omw-1.4")
 nltk.download("wordnet")
 nltk.download("averaged_perceptron_tagger")
-import streamlit as st
-import matplotlib.pyplot as plt
-import pandas as pd
-import re
-import string
-import emoji
-import spacy
-from mysutils.text import remove_urls
 from nltk.corpus import stopwords
 import mimetypes
 
