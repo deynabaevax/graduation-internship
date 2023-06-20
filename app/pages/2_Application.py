@@ -28,19 +28,6 @@ st.set_page_config(
     # layout="wide",
     initial_sidebar_state="auto",
 )
-
-# def convert_df(df, file_format):
-#     if file_format == 'csv':
-#         csv_data = df.to_csv(index=False).encode('utf-8')
-#         return csv_data
-#     elif file_format == 'excel':
-#         excel_data = BytesIO()
-#         with pd.ExcelWriter(excel_data, engine='xlsxwriter') as writer:
-#             df.to_excel(writer, index=False)
-#         excel_data.seek(0)
-#         return excel_data
-#     else:
-#         return None
     
 def download_excel(excel_file):
     with open(excel_file, "rb") as f:
@@ -162,29 +149,46 @@ def main():
                     analysis = get_analysis_values(df_prep, target_column)
                     st.write(analysis)
                     st.divider()
+                    
+                    
+                    tab1, tab2 = st.tabs(["Results .CSV", "Results .XLSX"])
+                
+                    with tab1:
+                        if df_prep is not None and not df_prep.empty:
+                            st.subheader("Download results")
+                            st.info("Download the results of the data preprocessing in .CSV", icon="📥")
+                            download_csv(df_prep)
+                                
+                    with tab2:
+                        st.subheader("Download results")
+                        st.info("Download the results of the data preprocessing in .XLSX", icon="📥")
+                        output_df = df_prep
+                        with pd.ExcelWriter("preprocessed.xlsx") as writer:
+                            output_df.to_excel(writer, sheet_name="Preprocessed data", index=False)
+                            download_excel("preprocessed.xlsx")
             except:
                 pass
             
-            tab1, tab2 = st.tabs(["Results .CSV", "Results .XLSX"])
+            # tab1, tab2 = st.tabs(["Results .CSV", "Results .XLSX"])
                 
-            with tab1:
-                if df_prep is not None and not df_prep.empty:
-                    st.subheader("Download results")
-                    st.info("Download the results of the data preprocessing in .CSV", icon="📥")
-                    download_csv(df_prep)
+            # with tab1:
+            #     if df_prep is not None and not df_prep.empty:
+            #         st.subheader("Download results")
+            #         st.info("Download the results of the data preprocessing in .CSV", icon="📥")
+            #         download_csv(df_prep)
                         
-            with tab2:
-                st.subheader("Download results")
-                st.info("Download the results of the data preprocessing in .XLSX", icon="📥")
-                output_df = df_prep
-                try:
-                    with pd.ExcelWriter("preprocessed.xlsx") as writer:
-                        output_df.to_excel(writer, sheet_name="Preprocessed data", index=False)
-                        download_excel("preprocessed.xlsx")
-                except:
-                    pass
+            # with tab2:
+            #     st.subheader("Download results")
+            #     st.info("Download the results of the data preprocessing in .XLSX", icon="📥")
+            #     output_df = df_prep
+            #     try:
+            #         with pd.ExcelWriter("preprocessed.xlsx") as writer:
+            #             output_df.to_excel(writer, sheet_name="Preprocessed data", index=False)
+            #             download_excel("preprocessed.xlsx")
+            #     except:
+            #         pass
         
-            # # Download the data if the df is not empty
+            # Download the data if the df is not empty
             # if df_prep is not None and not df_prep.empty:
             #     st.info("Download the results of the preprocessing in .CSV or .XLSX", icon="📥")
             #     download_csv(df_prep)
