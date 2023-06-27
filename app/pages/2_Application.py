@@ -9,8 +9,6 @@ from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.feature_extraction.text import CountVectorizer
 from io import BytesIO
 import time
-from gensim.models import LdaModel
-from gensim.corpora import Dictionary
 import plotly.graph_objects as go
 import plotly.express as px
 import nltk
@@ -25,7 +23,6 @@ nltk.download("averaged_perceptron_tagger")
 st.set_page_config(
     page_title="App",
     page_icon="🤖",
-    # layout="wide",
     initial_sidebar_state="auto",
 )
     
@@ -41,21 +38,16 @@ def download_csv(dataframe):
     csv = dataframe.to_csv(index=False)
     b64 = base64.b64encode(
         csv.encode()
-    ).decode()  # some strings <-> bytes conversions necessary here
+    ).decode()  
     href = f'<a href="data:file/csv;base64,{b64}" download="data.csv"><input type="button" value="Download CSV File"></a>'
     st.markdown(href, unsafe_allow_html=True)
-
-# def download_csv(csv_file):
-#     b64 = base64.b64encode(csv_file).decode()
-#     href = f'<a href="data:text/csv;base64,{b64}" download="data.csv"><input type="button" value="Download CSV File"></a>'
-#     st.markdown(href, unsafe_allow_html=True)
     
-def get_analysis_values(df, target_column=None):
-    st.write(f'The shape _(rows, columns)_ of your dataframe is: `{df.shape}`')
+def get_analysis_values(df_prep, target_column=None):
+    st.write(f'The shape _(rows, columns)_ of your dataframe is: `{df_prep.shape}`')
     st.write('**Most frequent words**')
 
     # Calculate word frequencies
-    word_frequencies = nltk.FreqDist(nltk.word_tokenize(" ".join(df[target_column])))
+    word_frequencies = nltk.FreqDist(nltk.word_tokenize(" ".join(df_prep[target_column])))
 
     # Convert word frequencies to a dataframe
     word_frequencies_df = pd.DataFrame(word_frequencies.items(), columns=["Word", "Frequency"])
@@ -146,8 +138,9 @@ def main():
                     st.write(df_prep)
                     st.divider()
                     
-                    analysis = get_analysis_values(df_prep, target_column)
-                    st.write(analysis)
+                    # analysis = get_analysis_values(df_prep, target_column)
+                    # st.write(analysis)
+                    st.write(f'The shape _(rows, columns)_ of your dataframe is: `{df_prep.shape}`')
                     st.divider()
                     
                     
@@ -168,54 +161,6 @@ def main():
                             download_excel("preprocessed.xlsx")
             except:
                 pass
-            
-            # tab1, tab2 = st.tabs(["Results .CSV", "Results .XLSX"])
-                
-            # with tab1:
-            #     if df_prep is not None and not df_prep.empty:
-            #         st.subheader("Download results")
-            #         st.info("Download the results of the data preprocessing in .CSV", icon="📥")
-            #         download_csv(df_prep)
-                        
-            # with tab2:
-            #     st.subheader("Download results")
-            #     st.info("Download the results of the data preprocessing in .XLSX", icon="📥")
-            #     output_df = df_prep
-            #     try:
-            #         with pd.ExcelWriter("preprocessed.xlsx") as writer:
-            #             output_df.to_excel(writer, sheet_name="Preprocessed data", index=False)
-            #             download_excel("preprocessed.xlsx")
-            #     except:
-            #         pass
-        
-            # Download the data if the df is not empty
-            # if df_prep is not None and not df_prep.empty:
-            #     st.info("Download the results of the preprocessing in .CSV or .XLSX", icon="📥")
-            #     download_csv(df_prep)
-            #     output_df = df_prep
-            #     with pd.ExcelWriter("data.xlsx") as writer:
-            #         output_df.to_excel(writer, sheet_name="Preprocessed-data", index=False)
-            #     download_excel("data.xlsx")
-                
-                
-                # st.sidebar.markdown("### Download the result")
-                # file_format = st.sidebar.selectbox("Select file format", ["csv", "excel"], key='file-format')
-                # file_data = convert_df(df_prep, file_format)
-
-                # if file_data is not None:
-                #     if file_format == 'csv':
-                #         download_csv("preprocessed.csv")
-                #     elif file_format == 'excel':
-                #         download_excel("preprocessed.xlsx")
-
-
-                # if file_data is not None: 
-                #     st.sidebar.download_button(
-                #         "📥 Download the result",
-                #         data=file_data,
-                #         file_name=f"preprocessed.{file_format}",
-                #         key='download-file'
-                #     )
         
         elif task == "Topic Modelling":
             if df_prep is None or df_prep.empty:
@@ -259,18 +204,18 @@ def main():
                 st.write(topic_info)
                 st.divider()
                 
-                # # Create tabs for different visuals
-                # tab1, tab2 = st.tabs(["Intertopic Distance Map", "Bar Chart"])
+                # Create tabs for different visuals
+                tab1, tab2 = st.tabs(["Intertopic Distance Map", "Bar Chart"])
                 
-                # with tab1:
-                #     st.subheader("Intertopic Distance Map")
-                #     fig = topic_modeller.get_intertopic_map()
-                #     st.plotly_chart(fig)
+                with tab1:
+                    st.subheader("Intertopic Distance Map")
+                    topic_modeller.get_intertopic_map()
+                    # st.plotly_chart(fig)
                 
-                # with tab2:
-                #     st.subheader("Bar Chart")
-                #     fig = topic_modeller.visualize_barchart()
-                #     st.plotly_chart(fig)
+                with tab2:
+                    st.subheader("Bar Chart")
+                    topic_modeller.show_barchart()
+                    # st.plotly_chart(fig)
                 
                 tab1, tab2 = st.tabs(["Results .CSV", "Results .XLSX"])
                 

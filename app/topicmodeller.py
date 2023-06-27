@@ -24,8 +24,8 @@ class TopicModeller:
         self.custom_stop_words = list(text.ENGLISH_STOP_WORDS.union(self.dutch_stop_words))
         
         self.sentence_model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
-        self.umap_model = umap.UMAP(n_neighbors=10, min_dist=0.3, metric="cosine", low_memory=True)
-        self.hdbscan_model = hdbscan.HDBSCAN(min_cluster_size=10, min_samples=5, prediction_data=True)
+        self.umap_model = umap.UMAP(n_neighbors=4, min_dist=0.3, metric="cosine", low_memory=True)
+        self.hdbscan_model = hdbscan.HDBSCAN(min_cluster_size=6, min_samples=5, prediction_data=True)
         self.vectorizer_model = CountVectorizer(stop_words=self.custom_stop_words, ngram_range=(1, 2))
         self.ctfidf_model = ClassTfidfTransformer(bm25_weighting=True, reduce_frequent_words=True)
         self.representation_model_mmr = MaximalMarginalRelevance(diversity=1)
@@ -42,7 +42,7 @@ class TopicModeller:
             embedding_model=self.sentence_model,
             umap_model=self.umap_model,
             hdbscan_model=self.hdbscan_model,
-            min_topic_size=10,
+            min_topic_size=3,
             nr_topics="auto",
             vectorizer_model=self.vectorizer_model,
             ctfidf_model=self.ctfidf_model,
@@ -55,23 +55,23 @@ class TopicModeller:
         # return sentences, probs
 
     def get_intertopic_map(self):
-        return self.topic_model.visualize_topics().data
-        # fig = self.topic_model.visualize_topics()
-        # return fig.data if isinstance(fig, go.Figure) else fig
-        # return self.topic_model.visualize_topics()
+        fig = self.topic_model.visualize_topics()
+        return st.plotly_chart(fig)
 
-    def visualize_barchart(self):
+    def show_barchart(self):
+        fig = self.topic_model.visualize_barchart()
+        return st.plotly_chart(fig)
+    
         # topic_info = self.get_topic_info()
-        topic_info = self.get_topic_info().copy()
-        if topic_info is not None:
-            fig, ax = plt.subplots(figsize=(10, 6))
-            sns.barplot(data=topic_info, x='Count', y='Topic name', ax=ax)
-            ax.set_xlabel('Count')
-            ax.set_ylabel('Topic name')
-            ax.set_title('Topic Distribution')
-            st.pyplot(fig)
-        else:
-            st.write('No topic information available.')
+        # if topic_info is not None:
+        #     fig, ax = plt.subplots(figsize=(10, 6))
+        #     sns.barplot(data=topic_info, x='Count', y='Topic name', ax=ax)
+        #     ax.set_xlabel('Count')
+        #     ax.set_ylabel('Topic name')
+        #     ax.set_title('Topic Distribution')
+        #     st.pyplot(fig)
+        # else:
+        #     st.write('No topic information available.')
 
     def get_topic_info(self):
         if self.topic_model is not None:
