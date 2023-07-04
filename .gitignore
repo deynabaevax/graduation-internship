@@ -1,3 +1,5 @@
 *.csv
 *.xlsx
 *.npy
+*.venv/
+__pycache__/
