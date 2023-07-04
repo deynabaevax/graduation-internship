@@ -5,6 +5,7 @@ import umap
 import hdbscan
 from sklearn.feature_extraction.text import CountVectorizer
 from bertopic import BERTopic
+from bertopic.representation import KeyBERTInspired
 from bertopic.representation import MaximalMarginalRelevance
 from bertopic.vectorizers import ClassTfidfTransformer
 import nltk
@@ -24,25 +25,72 @@ class TopicModeller:
         self.custom_stop_words = list(text.ENGLISH_STOP_WORDS.union(self.dutch_stop_words))
         
         self.sentence_model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
-        self.umap_model = umap.UMAP(n_neighbors=4, min_dist=0.3, metric="cosine", low_memory=True)
-        self.hdbscan_model = hdbscan.HDBSCAN(min_cluster_size=6, min_samples=5, prediction_data=True)
-        self.vectorizer_model = CountVectorizer(stop_words=self.custom_stop_words, ngram_range=(1, 2))
+        self.umap_model_small = umap.UMAP(n_neighbors=2, min_dist=0.3, metric="cosine", low_memory=True)
+        self.hdbscan_model_small = hdbscan.HDBSCAN(min_cluster_size=4, min_samples=3, prediction_data=True)
+        
+        self.umap_model_large = umap.UMAP(n_neighbors=9, min_dist=0.3, metric="cosine", low_memory=True)
+        self.hdbscan_model_large = hdbscan.HDBSCAN(min_cluster_size=10, min_samples=5, prediction_data=True)
+        self.vectorizer_model = CountVectorizer(stop_words=self.custom_stop_words, ngram_range=(1, 1))
         self.ctfidf_model = ClassTfidfTransformer(bm25_weighting=True, reduce_frequent_words=True)
-        self.representation_model_mmr = MaximalMarginalRelevance(diversity=1)
+        
+        # top_n_words=3 to define the topics better
+        self.representation_model_mmr = MaximalMarginalRelevance(diversity=0.4)
+        
+        # use this for better key word extraction
+        # self.main_representation_model = KeyBERTInspired()
+        
+        # self.aspect_model = [KeyBERTInspired(top_n_words=3), MaximalMarginalRelevance(diversity=.4)]
+        
+        # self.representation_model = {
+        #                         "Main": self.main_representation_model_mmr,
+        #                         "Aspect1":  self.aspect_model,
+        #                         }
+        
+        
 
-    def generate_topics(self, sentences, n_components=None):
+    def generate_smaller_topics(self, sentences, n_components=None):
+        sentences = [re.sub(r"\d+", "", sentence) for sentence in sentences]
+        
         sentence_embedding = self.sentence_model.encode(sentences)
-        umap_embeddings = self.umap_model.fit_transform(sentence_embedding)
-        cluster_ids = self.hdbscan_model.fit_predict(umap_embeddings)
+        umap_embeddings = self.umap_model_small.fit_transform(sentence_embedding)
+        cluster_ids = self.hdbscan_model_small.fit_predict(umap_embeddings)
         vectorizer_matrix = self.vectorizer_model.fit_transform(sentences)
         ctfidf_matrix = self.ctfidf_model.fit_transform(vectorizer_matrix)
             
         self.topic_model = BERTopic(
             language="multilingual",
             embedding_model=self.sentence_model,
-            umap_model=self.umap_model,
-            hdbscan_model=self.hdbscan_model,
-            min_topic_size=3,
+            umap_model=self.umap_model_small,
+            hdbscan_model=self.hdbscan_model_small,
+            min_topic_size=2,
+            top_n_words=6,
+            nr_topics="auto",
+            vectorizer_model=self.vectorizer_model,
+            ctfidf_model=self.ctfidf_model,
+            representation_model=self.representation_model_mmr,
+            )
+        topics, probs = self.topic_model.fit_transform(sentences)
+        new_topics = self.topic_model.reduce_outliers(sentences, topics)
+
+        return sentences, new_topics, probs
+        # return sentences, probs
+        
+    def generate_larger_topics(self, sentences, n_components=None):
+        sentences = [re.sub(r"\d+", "", sentence) for sentence in sentences]
+        
+        sentence_embedding = self.sentence_model.encode(sentences)
+        umap_embeddings = self.umap_model_large.fit_transform(sentence_embedding)
+        cluster_ids = self.hdbscan_model_large.fit_predict(umap_embeddings)
+        vectorizer_matrix = self.vectorizer_model.fit_transform(sentences)
+        ctfidf_matrix = self.ctfidf_model.fit_transform(vectorizer_matrix)
+            
+        self.topic_model = BERTopic(
+            language="multilingual",
+            embedding_model=self.sentence_model,
+            umap_model=self.umap_model_large,
+            hdbscan_model=self.hdbscan_model_large,
+            min_topic_size=5,
+            top_n_words=5,
             nr_topics="auto",
             vectorizer_model=self.vectorizer_model,
             ctfidf_model=self.ctfidf_model,
@@ -60,6 +108,10 @@ class TopicModeller:
 
     def show_barchart(self):
         fig = self.topic_model.visualize_barchart()
+        return st.plotly_chart(fig)
+    
+    def show_similarity(self):
+        fig = self.topic_model.visualize_heatmap()
         return st.plotly_chart(fig)
     
         # topic_info = self.get_topic_info()
@@ -80,8 +132,8 @@ class TopicModeller:
             # Rename the columns
             topic_info = topic_info.rename(columns={
                 'Name': 'Topic name',
-                'Representation': 'Words forming the topic',
-                'Representative_Docs': 'Most common user queries'
+                'Representation': 'Best representative words',
+                'Representative_Docs': 'Representative user queries'
             })
 
            # Remove the prefix number from the 'Name' column except for names starting with -1
@@ -91,7 +143,7 @@ class TopicModeller:
             )
 
             # Keep only the desired columns
-            topic_info = topic_info[['Count', 'Topic name', 'Words forming the topic', 'Most common user queries']]
+            topic_info = topic_info[['Count', 'Topic name', 'Best representative words', 'Representative user queries']]
 
             return topic_info
         else:
