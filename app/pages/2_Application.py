@@ -23,6 +23,7 @@ nltk.download("averaged_perceptron_tagger")
 st.set_page_config(
     page_title="App",
     page_icon="🤖",
+    layout="wide",
     initial_sidebar_state="auto",
 )
     
@@ -63,7 +64,7 @@ def get_analysis_values(df_prep, target_column=None):
     st.plotly_chart(fig)
 
 def main():
-    st.title("Discover new topics using BERTopic")
+    st.title("Topic discovery with BERTopic")
     st.info('''
         \n
         To kickstart your topic exploration, upload your file on the left sidebar, select the desired task and column for exploring. 
@@ -106,6 +107,8 @@ def main():
         target_column = None
         df_prep = None
         topic_modeller = None
+        topic_info = None
+    
         
         if task == "Data Preprocessing":
             # Initialize the DataPreprocessor
@@ -166,6 +169,13 @@ def main():
             if df_prep is None or df_prep.empty:
                 # Perform preprocessing first
                 try:
+                    # For using larger or smaller BERTopic clustering & dimensionality reduction; 
+                    # Choose between specific data size
+                    st.sidebar.markdown("### Dataset size")
+                    choice = st.sidebar.radio(label="Choose the size of your data", 
+                                 options=("Small dataset (less than 200 rows)", 
+                                          "Large dataset (more than 500 rows)"))
+                    
                     # Display available columns
                     st.sidebar.markdown("### Select a column")
                     target_column = st.sidebar.selectbox("Columns present", df.columns)
@@ -192,46 +202,78 @@ def main():
                     pass
             
             if df_prep is not None and not df_prep.empty:
-                if topic_modeller is None:
-                    # Initialize the TopicModeller class
-                    topic_modeller = TopicModeller()
-                    sent = df_prep[target_column].tolist()
-                    topic_modeller.generate_topics(sent)
-                
-                topic_info = topic_modeller.get_topic_info()
-                st.success("The app has discovered the following potential topics: ")
-
-                st.write(topic_info)
-                st.divider()
-                
-                # Create tabs for different visuals
-                tab1, tab2 = st.tabs(["Intertopic Distance Map", "Bar Chart"])
-                
-                with tab1:
-                    st.subheader("Intertopic Distance Map")
-                    topic_modeller.get_intertopic_map()
-                    # st.plotly_chart(fig)
-                
-                with tab2:
-                    st.subheader("Bar Chart")
-                    topic_modeller.show_barchart()
-                    # st.plotly_chart(fig)
-                
-                tab1, tab2 = st.tabs(["Results .CSV", "Results .XLSX"])
-                
-                with tab1:
-                    if topic_info is not None and not topic_info.empty:
-                        st.subheader("Download results")
-                        st.info("Download the results of the topic modelling in .CSV", icon="📥")
-                        download_csv(topic_info)
+                try:
+                    if topic_modeller is None:
+                        # Initialize the TopicModeller class
+                        topic_modeller = TopicModeller()
+                        sent = df_prep[target_column].tolist()
                         
-                with tab2:
-                    st.subheader("Download results")
-                    st.info("Download the results of the topic modelling in .XLSX", icon="📥")
-                    output_df = topic_info
-                    with pd.ExcelWriter("topics.xlsx") as writer:
-                        output_df.to_excel(writer, sheet_name="Generated topics", index=False)
-                    download_excel("topics.xlsx")
+                        if choice == "Small dataset (less than 200 rows)":
+                            topic_modeller.generate_smaller_topics(sent)
+                            topic_info = topic_modeller.get_topic_info()
+                            st.success("The app has discovered the following potential topics: ")
+
+                            st.write(topic_info)
+                            st.divider()
+                            
+                            # Create tabs for different visuals
+                            tab1, tab2, tab3 = st.tabs(["Intertopic Distance Map", "Bar Chart", "Topic Similarity"])
+                            
+                            with tab1:
+                                st.subheader("Intertopic Distance Map")
+                                topic_modeller.get_intertopic_map()
+                            
+                            with tab2:
+                                st.subheader("Bar Chart")
+                                topic_modeller.show_barchart()
+                                
+                            with tab3:
+                                st.subheader("Topic Similarity")
+                                topic_modeller.show_similarity()
+                            
+                        if choice == "Large dataset (more than 500 rows)":
+                            topic_modeller.generate_larger_topics(sent)
+                    
+                            topic_info = topic_modeller.get_topic_info()
+                            st.success("The app has discovered the following potential topics: ")
+
+                            st.write(topic_info)
+                            st.divider()
+                    
+                            # Create tabs for different visuals
+                            tab1, tab2, tab3 = st.tabs(["Intertopic Distance Map", "Bar Chart", "Topic Similarity"])
+                            
+                            with tab1:
+                                st.subheader("Intertopic Distance Map")
+                                topic_modeller.get_intertopic_map()
+                            
+                            with tab2:
+                                st.subheader("Bar Chart")
+                                topic_modeller.show_barchart()
+                                
+                            with tab3:
+                                st.subheader("Topic Similarity")
+                                topic_modeller.show_similarity()
+                
+                        tab4, tab5 = st.tabs(["Results .CSV", "Results .XLSX"])
+                            
+                        with tab4:
+                            if df_prep is not None and not df_prep.empty:
+                                st.subheader("Download results")
+                                st.info("Download the results of the topic modelling in .CSV", icon="📥")
+                                download_csv(topic_info)
+                                    
+                        with tab5:
+                            st.subheader("Download results")
+                            st.info("Download the results of the topic modelling in .XLSX", icon="📥")
+                            output_df = topic_info
+                            with pd.ExcelWriter("topics.xlsx") as writer:
+                                output_df.to_excel(writer, sheet_name="Generated topics", index=False)
+                                download_excel("topics.xlsx")
+                    
+                except:
+                    pass
+            
                 
                 # if topic_info is not None and not topic_info.empty:
                 #     st.subheader("Download results")

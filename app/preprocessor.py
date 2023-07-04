@@ -58,9 +58,25 @@ class DataPreprocessor:
     #     return st.pyplot(wordfig)
         
     def clean_text(self, text):
+        
+        # remove IBANS
+        # text = re.sub(r"\b[A-Z]{2}\d{2}[A-Z\d]{4}\d{7}(?:[A-Z\d]?){0,16}\b", "", text)
+        text = re.sub(r"\bNL\d{2}[A-Z]+\d{10}\b", "", text)
+        
+        # remove NL letters
+        text = re.sub(r"\b[NL]+[A-Z]+\b", "", text)
+        
+        text = re.sub(r"\b[NL]+[a-z]+\b", "", text)
+        
+        # remove iban letters
+        text = re.sub(r"\b(nlabcd|nlingb|nlijk|nlijkl|june|nlinbb|hotmail)\b", "", text)
+        
+        # remove specific name
+        text = re.sub(r"\bbart\b", "", text)
+        
         # lowercasing text 
         text = text.lower()
-
+        
         # remove emojis
         text = "".join(c for c in text if c not in emoji.UNICODE_EMOJI)
 
@@ -70,6 +86,12 @@ class DataPreprocessor:
         
         # remove emails
         text = re.sub(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", "", text)
+        
+        # remove card numbers
+        text = re.sub(r"(?<!\d)\d{13}(?!\d)", "", text)
+        
+        # remove phone numbers 
+        text = re.sub(r"^\(?([+]31(\s?)|0031|0)-?6(\s?|-)([0-9]\s{0,3}){8}$", "", text)
         
         # remove events
         text = re.sub(r"\b\w*ev\w*\b|\b\w*event\w*\b", "", text)
@@ -89,8 +111,13 @@ class DataPreprocessor:
         return text
     
     def remove_stopwords(self, text):
+        custom_stopwords = ["hoi", "nlabcd",
+                            "jacobs", "nlinbb", "nlabcd", "johnsmith", "june", "hotmail", "nlijkl", "com", 
+                            "fucking", "hi", "hello", "hallo", "nl12ijkl3236789", "rob", "jacobs", 
+                            "bart", "kunt", "hotmail", "15th", "987654321", "nl12abcd3456789", "123456",
+                            "nlingb", "nlabcd", "nlabcd"]
         # load the default stopwords list from NLTK for Dutch, and English and add custom stopwords
-        stop_words = set(stopwords.words("dutch")).union(set(stopwords.words("english")))
+        stop_words = set(stopwords.words("dutch")).union(set(stopwords.words("english"))).union(set(custom_stopwords))
         tokens = nltk.word_tokenize(text)
 
         filtered_tokens = [token for token in tokens if len(token) > 3 and token.lower() not in stop_words]
